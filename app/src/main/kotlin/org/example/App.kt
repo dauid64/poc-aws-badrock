@@ -3,13 +3,28 @@
  */
 package org.example
 
-class App {
-    val greeting: String
-        get() {
-            return "Hello World!"
-        }
+import aws.sdk.kotlin.services.s3.*
+import aws.sdk.kotlin.services.s3.model.BucketLocationConstraint
+import kotlinx.coroutines.runBlocking
+import java.util.UUID
+
+val REGION = "us-west-2"
+val BUCKET = "bucket-${UUID.randomUUID()}"
+val KEY = "key"
+
+fun main(): Unit = runBlocking {
+    TODO("Not yet implemented")
 }
 
-fun main() {
-    println(App().greeting)
+suspend fun setupTutorial(s3: S3Client) {
+    println("Creating bucket $BUCKET...")
+    s3.createBucket {
+        bucket = BUCKET
+        if (REGION != "us-east-1") {
+            createBucketConfiguration {
+                locationConstraint = BucketLocationConstraint.fromValue(REGION)
+            }
+        }
+    }
+    println("Bucket $BUCKET created successfully.")
 }
