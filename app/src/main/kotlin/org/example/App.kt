@@ -5,6 +5,7 @@ package org.example
 
 import aws.sdk.kotlin.services.s3.*
 import aws.sdk.kotlin.services.s3.model.BucketLocationConstraint
+import aws.smithy.kotlin.runtime.content.ByteStream
 import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
@@ -13,7 +14,23 @@ val BUCKET = "bucket-${UUID.randomUUID()}"
 val KEY = "key"
 
 fun main(): Unit = runBlocking {
-    TODO("Not yet implemented")
+    S3Client
+        .fromEnvironment { region = REGION }
+        .use { s3 ->
+            setupTutorial(s3)
+
+            println("Creating object $BUCKET/$KEY...")
+
+            s3.putObject {
+                bucket = BUCKET
+                key = KEY
+                body = ByteStream.fromString("Testing with the Kotlin SDK")
+            }
+
+            println("Object $BUCKET/$KEY created successfully!")
+
+            cleanUp(s3)
+        }
 }
 
 suspend fun setupTutorial(s3: S3Client) {
@@ -27,4 +44,19 @@ suspend fun setupTutorial(s3: S3Client) {
         }
     }
     println("Bucket $BUCKET created successfully.")
+}
+
+suspend fun cleanUp(s3: S3Client) {
+    println("Deleting object $BUCKET/$KEY...")
+    s3.deleteObject {
+        bucket = BUCKET
+        key = KEY
+    }
+    println("Object $BUCKET/$KEY deleted successfully!")
+
+    println("Deleting bucket $BUCKET...")
+    s3.deleteBucket {
+        bucket = BUCKET
+    }
+    println("Bucket $BUCKET deleted successfully!")
 }
