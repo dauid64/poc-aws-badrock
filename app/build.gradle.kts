@@ -28,8 +28,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // This dependency is used by the application.
-    implementation(libs.guava)
-    implementation(awssdk.services.s3)
+    implementation("aws.sdk.kotlin:bedrockruntime:1.4.81")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

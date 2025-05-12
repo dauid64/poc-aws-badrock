@@ -3,60 +3,40 @@
  */
 package org.example
 
-import aws.sdk.kotlin.services.s3.*
-import aws.sdk.kotlin.services.s3.model.BucketLocationConstraint
-import aws.smithy.kotlin.runtime.content.ByteStream
-import kotlinx.coroutines.runBlocking
-import java.util.UUID
+import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
+import aws.sdk.kotlin.services.bedrockruntime.model.ContentBlock
+import aws.sdk.kotlin.services.bedrockruntime.model.ConversationRole
+import aws.sdk.kotlin.services.bedrockruntime.model.ConverseRequest
+import aws.sdk.kotlin.services.bedrockruntime.model.Message
 
-val REGION = "us-west-2"
-val BUCKET = "bucket-${UUID.randomUUID()}"
-val KEY = "key"
-
-fun main(): Unit = runBlocking {
-    S3Client
-        .fromEnvironment { region = REGION }
-        .use { s3 ->
-            setupTutorial(s3)
-
-            println("Creating object $BUCKET/$KEY...")
-
-            s3.putObject {
-                bucket = BUCKET
-                key = KEY
-                body = ByteStream.fromString("Testing with the Kotlin SDK")
-            }
-
-            println("Object $BUCKET/$KEY created successfully!")
-
-            cleanUp(s3)
-        }
+suspend fun main() {
+    converse().also { println(it) }
 }
 
-suspend fun setupTutorial(s3: S3Client) {
-    println("Creating bucket $BUCKET...")
-    s3.createBucket {
-        bucket = BUCKET
-        if (REGION != "us-east-1") {
-            createBucketConfiguration {
-                locationConstraint = BucketLocationConstraint.fromValue(REGION)
+suspend fun converse(): String {
+    BedrockRuntimeClient { region = "sa-east-1" }.use { client ->
+        val modelId = "anthropic.claude-3-haiku-20240307-v1:0"
+        val prompt = "Describe the purpose of a 'hello world' program in one line."
+        val message = Message {
+            content = listOf(ContentBlock.Text(prompt))
+            role = ConversationRole.User
+        }
+
+        val request = ConverseRequest {
+            this.modelId = modelId
+            messages = listOf(message)
+            inferenceConfig {
+                maxTokens = 500
+                temperature = 0.5F
             }
         }
-    }
-    println("Bucket $BUCKET created successfully.")
-}
 
-suspend fun cleanUp(s3: S3Client) {
-    println("Deleting object $BUCKET/$KEY...")
-    s3.deleteObject {
-        bucket = BUCKET
-        key = KEY
+        runCatching {
+            val response = client.converse(request)
+            return response.output!!.asMessage().content.first().asText()
+        }.getOrElse { error ->
+            error.message?.let { e -> System.err.println("ERROR: Can't invoke '$modelId'. Reason: $e") }
+            throw RuntimeException("Failed to generate text with model $modelId", error)
+        }
     }
-    println("Object $BUCKET/$KEY deleted successfully!")
-
-    println("Deleting bucket $BUCKET...")
-    s3.deleteBucket {
-        bucket = BUCKET
-    }
-    println("Bucket $BUCKET deleted successfully!")
 }
